@@ -18,13 +18,9 @@ pipeline {
                         value: ""
                     resources:
                       requests:
-                        cpu: "500m"
-                        memory: "512Mi"
-                        ephemeral-storage: "1Gi"
-                      limits:
-                        cpu: "1"
-                        memory: "1Gi"
                         ephemeral-storage: "2Gi"
+                      limits:
+                        ephemeral-storage: "4Gi"
                     
                   - name: maven
                     image: maven:3.9.9-eclipse-temurin-21-alpine
@@ -34,20 +30,16 @@ pipeline {
                         mountPath: /workspace
                     resources:
                       requests:
-                        cpu: "500m"
-                        memory: "512Mi"
-                        ephemeral-storage: "1Gi"
-                      limits:
-                        cpu: "1"
-                        memory: "1Gi"
                         ephemeral-storage: "2Gi"
+                      limits:
+                        ephemeral-storage: "4Gi"
                     
                   volumes:
                     - name: docker-storage
                       emptyDir: {}
                     - name: workspace
                       emptyDir: {}
-                      sizeLimit: "1Gi"
+                      sizeLimit: "2Gi"
             '''
         }
     }
@@ -87,7 +79,8 @@ EOF
                         mvn clean package -DskipTests
                         echo "===== BUILD OUTPUT ====="
                         ls -lh target/
-                        du -sh target/*.war
+                        echo "===== WAR FILE LOCATION ====="
+                        find /workspace -name "*.war"
                     '''
                 }
             }
@@ -97,16 +90,23 @@ EOF
             steps {
                 container('docker') {
                     sh '''
-                        echo "===== DOCKER BUILD CONTEXT ====="
-                        du -sh .
-                        du -sh target/
-
+                        echo "===== VERIFYING FILES ====="
+                        pwd
+                        ls -lh
+                        ls -lh target/
+                        
                         echo "===== BUILDING IMAGE ====="
+                        cat > Dockerfile <<EOF
+FROM tomcat:9.0-jre17
+WORKDIR /usr/local/tomcat/webapps/
+RUN rm -rf ROOT
+COPY target/vprofile-v2.war ROOT.war
+EOF
+                        echo "===== DOCKERFILE CONTENTS ====="
+                        cat Dockerfile
+                        
                         docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
                         docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
-                        
-                        echo "===== IMAGE DETAILS ====="
-                        docker images | grep ${DOCKER_IMAGE}
                     '''
                 }
             }
@@ -149,6 +149,8 @@ EOF
                     echo "===== DIAGNOSTICS ====="
                     df -h
                     docker info || true
+                    echo "===== WORKSPACE CONTENTS ====="
+                    find /workspace -type f
                 '''
             }
         }
