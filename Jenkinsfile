@@ -16,6 +16,15 @@ pipeline {
                     env:
                       - name: DOCKER_TLS_CERTDIR
                         value: ""
+                    resources:
+                      requests:
+                        cpu: "500m"
+                        memory: "512Mi"
+                        ephemeral-storage: "1Gi"
+                      limits:
+                        cpu: "1"
+                        memory: "1Gi"
+                        ephemeral-storage: "2Gi"
                     
                   - name: maven
                     image: maven:3.9.9-eclipse-temurin-21-alpine
@@ -23,12 +32,22 @@ pipeline {
                     volumeMounts:
                       - name: workspace
                         mountPath: /workspace
+                    resources:
+                      requests:
+                        cpu: "500m"
+                        memory: "512Mi"
+                        ephemeral-storage: "1Gi"
+                      limits:
+                        cpu: "1"
+                        memory: "1Gi"
+                        ephemeral-storage: "2Gi"
                     
                   volumes:
                     - name: docker-storage
                       emptyDir: {}
                     - name: workspace
                       emptyDir: {}
+                      sizeLimit: "1Gi"
             '''
         }
     }
@@ -43,6 +62,19 @@ pipeline {
             steps {
                 container('maven') {
                     checkout scm
+                    sh '''
+                        echo "===== CREATING .dockerignore ====="
+                        cat > .dockerignore <<EOF
+**/.git
+**/.github
+**/target/classes
+**/target/generated-*
+**/target/surefire-reports
+**/target/test-classes
+**/*.md
+**/Jenkinsfile
+EOF
+                    '''
                 }
             }
         }
@@ -52,9 +84,10 @@ pipeline {
                 container('maven') {
                     sh '''
                         echo "===== BUILDING WAR ====="
-                        mvn clean package
+                        mvn clean package -DskipTests
                         echo "===== BUILD OUTPUT ====="
-                        ls -l target/
+                        ls -lh target/
+                        du -sh target/*.war
                     '''
                 }
             }
@@ -64,19 +97,16 @@ pipeline {
             steps {
                 container('docker') {
                     sh '''
-                        echo "===== PREPARING DOCKERFILE ====="
-                        cat > Dockerfile <<EOF
-FROM tomcat:9.0-jre17
-COPY target/*.war /usr/local/tomcat/webapps/ROOT.war
-EXPOSE 8080
-CMD ["catalina.sh", "run"]
-EOF
-                        echo "===== DOCKERFILE CONTENTS ====="
-                        cat Dockerfile
-                        
+                        echo "===== DOCKER BUILD CONTEXT ====="
+                        du -sh .
+                        du -sh target/
+
                         echo "===== BUILDING IMAGE ====="
                         docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
                         docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
+                        
+                        echo "===== IMAGE DETAILS ====="
+                        docker images | grep ${DOCKER_IMAGE}
                     '''
                 }
             }
@@ -86,10 +116,8 @@ EOF
             steps {
                 container('docker') {
                     sh '''
-                        echo "===== LOGGING TO DOCKER HUB ====="
+                        echo "===== PUSHING TO DOCKER HUB ====="
                         echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
-                        
-                        echo "===== PUSHING IMAGE ====="
                         docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
                         docker push ${DOCKER_IMAGE}:latest
                     '''
@@ -100,8 +128,12 @@ EOF
 
     post {
         always {
+            echo "===== CLEANUP ====="
             container('docker') {
-                sh 'docker logout || true'
+                sh '''
+                    docker logout || true
+                    docker system prune -af || true
+                '''
             }
             cleanWs()
         }
@@ -112,6 +144,13 @@ EOF
         }
         failure {
             echo "===== BUILD FAILED ====="
+            container('docker') {
+                sh '''
+                    echo "===== DIAGNOSTICS ====="
+                    df -h
+                    docker info || true
+                '''
+            }
         }
     }
 }
