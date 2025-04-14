@@ -46,7 +46,7 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
-        DOCKER_IMAGE = 'omaribrahim91/web01'
+        DOCKER_IMAGE = 'omaribrahim91/jenkins-test'
     }
 
     stages {
