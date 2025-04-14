@@ -36,7 +36,7 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         GIT_REPO = 'https://github.com/Omar-Moh-Ibrahim/vprofile-cicd-jenkins.git'
-        DOCKER_IMAGE = 'omaribrahim91/web01'
+        DOCKER_IMAGE = 'omaribrahim91/jenkins-test'
     }
 
     stages {
