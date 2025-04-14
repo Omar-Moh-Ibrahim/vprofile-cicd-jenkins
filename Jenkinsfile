@@ -32,67 +32,71 @@ pipeline {
             '''
         }
     }
-    
+
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         GIT_REPO = 'https://github.com/Omar-Moh-Ibrahim/vprofile-cicd-jenkins.git'
-        DOCKER_IMAGE = ' omaribrahim91/web01'
+        DOCKER_IMAGE = 'omaribrahim91/web01'
     }
-    
+
     stages {
-        stage('Checkout GitHub Repo') {
+        stage('Checkout Code') {
             steps {
                 container('maven') {
-                    sh '''
-                        echo "===== CLONING REPOSITORY ====="
-                        git clone ${GIT_REPO} /workspace/source
-                        cd /workspace/source
-                        git checkout main
-                    '''
+                    checkout scm
                 }
             }
         }
-        
-        stage('Build WAR File') {
+
+        stage('Build WAR') {
             steps {
                 container('maven') {
                     sh '''
-                        echo "===== BUILDING WAR ====="
-                        cd /workspace/source
+                        echo "===== BUILDING WAR FILE ====="
                         mvn clean package
-                        ls -l target/*.war
+                        echo "===== BUILD ARTIFACTS ====="
+                        ls -l target/
                     '''
                 }
             }
         }
-        
+
         stage('Build Docker Image') {
             steps {
                 container('docker') {
-                    sh '''
-                        echo "===== BUILDING DOCKER IMAGE ====="
-                        cd /workspace/source
-                        
-                        cat > Dockerfile <<EOF
+                    script {
+                        def warFile = findFiles(glob: 'target/*.war')[0].name
+                        sh """
+                            echo "===== PREPARING DOCKERFILE ====="
+                            cat > Dockerfile <<EOF
 FROM tomcat:9.0-jre17
-COPY target/*.war /usr/local/tomcat/webapps/ROOT.war
+COPY target/${warFile} /usr/local/tomcat/webapps/ROOT.war
 EXPOSE 8080
 CMD ["catalina.sh", "run"]
 EOF
-                        
-                        docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
-                        docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
-                    '''
+                            echo "===== DOCKERFILE CONTENTS ====="
+                            cat Dockerfile
+                            
+                            echo "===== BUILDING IMAGE ====="
+                            docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                            docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
+                            
+                            echo "===== IMAGE DETAILS ====="
+                            docker images | grep ${DOCKER_IMAGE}
+                        """
+                    }
                 }
             }
         }
-        
+
         stage('Push to Docker Hub') {
             steps {
                 container('docker') {
                     sh '''
-                        echo "===== PUSHING TO DOCKER HUB ====="
+                        echo "===== LOGGING TO DOCKER HUB ====="
                         echo "${DOCKERHUB_CREDENTIALS_PSW}" | docker login -u "${DOCKERHUB_CREDENTIALS_USR}" --password-stdin
+                        
+                        echo "===== PUSHING IMAGE ====="
                         docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}
                         docker push ${DOCKER_IMAGE}:latest
                     '''
@@ -100,19 +104,21 @@ EOF
             }
         }
     }
-    
+
     post {
         always {
-            echo "===== CLEANUP ====="
             container('docker') {
-                sh '''
-                    docker logout
-                '''
+                sh 'docker logout || true'
             }
+            cleanWs()
         }
         success {
-            echo "===== SUCCESS ====="
-            echo "Docker image pushed to Docker Hub: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+            echo "===== SUCCESSFUL DEPLOYMENT ====="
+            echo "Docker Image: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+            echo "Docker Image: ${DOCKER_IMAGE}:latest"
+        }
+        failure {
+            echo "===== BUILD FAILED ====="
         }
     }
 }
