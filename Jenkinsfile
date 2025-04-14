@@ -35,8 +35,7 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
-        GIT_REPO = 'https://github.com/Omar-Moh-Ibrahim/vprofile-cicd-jenkins.git'
-        DOCKER_IMAGE = 'omaribrahim91/jenkins-test'
+        DOCKER_IMAGE = 'omaribrahim91/web01'
     }
 
     stages {
@@ -52,9 +51,9 @@ pipeline {
             steps {
                 container('maven') {
                     sh '''
-                        echo "===== BUILDING WAR FILE ====="
+                        echo "===== BUILDING WAR ====="
                         mvn clean package
-                        echo "===== BUILD ARTIFACTS ====="
+                        echo "===== BUILD OUTPUT ====="
                         ls -l target/
                     '''
                 }
@@ -64,27 +63,21 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 container('docker') {
-                    script {
-                        def warFile = findFiles(glob: 'target/*.war')[0].name
-                        sh """
-                            echo "===== PREPARING DOCKERFILE ====="
-                            cat > Dockerfile <<EOF
+                    sh '''
+                        echo "===== PREPARING DOCKERFILE ====="
+                        cat > Dockerfile <<EOF
 FROM tomcat:9.0-jre17
-COPY target/${warFile} /usr/local/tomcat/webapps/ROOT.war
+COPY target/*.war /usr/local/tomcat/webapps/ROOT.war
 EXPOSE 8080
 CMD ["catalina.sh", "run"]
 EOF
-                            echo "===== DOCKERFILE CONTENTS ====="
-                            cat Dockerfile
-                            
-                            echo "===== BUILDING IMAGE ====="
-                            docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
-                            docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
-                            
-                            echo "===== IMAGE DETAILS ====="
-                            docker images | grep ${DOCKER_IMAGE}
-                        """
-                    }
+                        echo "===== DOCKERFILE CONTENTS ====="
+                        cat Dockerfile
+                        
+                        echo "===== BUILDING IMAGE ====="
+                        docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+                        docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest
+                    '''
                 }
             }
         }
@@ -113,9 +106,9 @@ EOF
             cleanWs()
         }
         success {
-            echo "===== SUCCESSFUL DEPLOYMENT ====="
-            echo "Docker Image: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
-            echo "Docker Image: ${DOCKER_IMAGE}:latest"
+            echo "===== SUCCESS ====="
+            echo "Image pushed: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+            echo "Image pushed: ${DOCKER_IMAGE}:latest"
         }
         failure {
             echo "===== BUILD FAILED ====="
