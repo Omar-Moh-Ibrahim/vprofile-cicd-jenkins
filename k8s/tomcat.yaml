@@ -24,7 +24,7 @@ spec:
           command: ['sh', '-c', "until nc -z rmq01 5672; do echo waiting for rmq01; sleep 5; done"]
       containers:
         - name: app01
-          image: omaribrahim91/app01:tomcat
+          image: omaribrahim91/app01:12
           ports:
             - containerPort: 8080
           readinessProbe:
