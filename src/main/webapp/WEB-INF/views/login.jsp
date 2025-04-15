@@ -71,6 +71,7 @@
             <h2 class="form-heading" align="center">WELCOME!</h2>
             <p style="text-align:center; color: green; font-weight: bold;">Jenkins CI/CD test1</p>
             <p style="text-align:center; color: green; font-weight: bold;">Jenkins CI/CD test2 recreate</p>
+            <p style="text-align:center; color: green; font-weight: bold;">Jenkins CI/CD test2 recreate</p>
             <img class="logo" src="${contextPath}/resources/Images/hkh-infotech-logo.png" />
 
             <div class="form-group ${error != null ? 'has-error' : ''}">
