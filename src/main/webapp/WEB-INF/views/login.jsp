@@ -72,6 +72,7 @@
             <p style="text-align:center; color: green; font-weight: bold;">Jenkins CI/CD test-1</p>
             <p style="text-align:center; color: green; font-weight: bold;">Jenkins CI/CD test-2 recreate</p>
             <p style="text-align:center; color: green; font-weight: bold;">Jenkins CI/CD test-3 rolling-update</p>
+            <p style="text-align:center; color: green; font-weight: bold;">Jenkins CI/CD test-4 argocd-deployment</p>
             <img class="logo" src="${contextPath}/resources/Images/hkh-infotech-logo.png" />
 
             <div class="form-group ${error != null ? 'has-error' : ''}">
