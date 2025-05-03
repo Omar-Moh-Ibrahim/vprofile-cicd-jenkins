@@ -7,7 +7,8 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: [self-hosted]
+    # Run the build and Docker steps on GitHub-hosted runner
+    runs-on: ubuntu-latest  
 
     steps:
       - name: Checkout code
@@ -19,9 +20,8 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Build WAR file with Maven (Dockerized)
-        run: |
-          docker run --rm -v "$PWD":/app -w /app maven:3.8.7-openjdk-11 mvn clean package
+      - name: Build WAR file with Maven
+        run: mvn clean package
 
       - name: Build Docker image
         run: docker build -t omaribrahim91/app01:latest .
@@ -33,6 +33,14 @@ jobs:
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
           docker push omaribrahim91/app01:latest
+
+  deploy:
+    # Run the deploy step on your self-hosted runner
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Deploy to Kubernetes
         run: kubectl apply -f k8s/
