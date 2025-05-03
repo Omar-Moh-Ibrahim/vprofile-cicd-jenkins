@@ -4,4 +4,4 @@ WORKDIR /usr/local/tomcat/webapps/
 
 RUN rm -rf ROOT
 
-COPY vprofile-v2.war ROOT.war
+COPY target/vprofile-v2.war ROOT.war
