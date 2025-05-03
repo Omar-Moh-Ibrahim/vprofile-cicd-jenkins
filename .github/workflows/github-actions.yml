@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-and-deploy:
-    # Run the build and Docker steps on GitHub-hosted runner
+    # Run on GitHub-hosted runner (ubuntu-latest)
     runs-on: ubuntu-latest  
 
     steps:
@@ -23,6 +23,9 @@ jobs:
       - name: Build WAR file with Maven
         run: mvn clean package
 
+      - name: Verify WAR file exists
+        run: ls -l target/
+
       - name: Build Docker image
         run: docker build -t omaribrahim91/app01:latest .
 
@@ -33,14 +36,3 @@ jobs:
         run: |
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
           docker push omaribrahim91/app01:latest
-
-  deploy:
-    # Run the deploy step on your self-hosted runner
-    runs-on: [self-hosted]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Deploy to Kubernetes
-        run: kubectl apply -f k8s/
