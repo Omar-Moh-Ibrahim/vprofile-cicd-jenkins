@@ -3,11 +3,10 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - main  # Adjust to your default branch name
+      - main
 
 jobs:
   build-and-deploy:
-    # Run on GitHub-hosted runner (ubuntu-latest)
     runs-on: ubuntu-latest  
 
     steps:
@@ -24,10 +23,21 @@ jobs:
         run: mvn clean package
 
       - name: Verify WAR file exists
-        run: ls -l target/
+        run: |
+          ls -la target/
+          if [ ! -f "target/vprofile-v2.war" ]; then
+            echo "Error: WAR file not found!"
+            exit 1
+          fi
+
+      - name: Prepare Docker build context
+        run: |
+          cp target/vprofile-v2.war .
+          ls -la
 
       - name: Build Docker image
-        run: docker build -t omaribrahim91/app01:latest .
+        run: |
+          docker build -t omaribrahim91/app01:latest .
 
       - name: Push Docker image to Docker Hub
         env:
