@@ -5,9 +5,13 @@ on:
     branches:
       - main
 
+env:
+  DOCKER_IMAGE: "omaribrahim91/app01"
+  K8S_NAMESPACE: "default"  # Change to your namespace if needed
+
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest  
+  build:
+    runs-on: ubuntu-latest  # GitHub-hosted runner for building
 
     steps:
       - name: Checkout code
@@ -25,24 +29,30 @@ jobs:
       - name: Verify WAR file exists
         run: |
           ls -la target/
-          if [ ! -f "target/vprofile-v2.war" ]; then
-            echo "Error: WAR file not found!"
-            exit 1
-          fi
+          [ -f "target/vprofile-v2.war" ] || exit 1
 
-      - name: Prepare Docker build context
-        run: |
-          cp target/vprofile-v2.war .
-          ls -la
-
-      - name: Build Docker image
-        run: |
-          docker build -t omaribrahim91/app01:latest .
-
-      - name: Push Docker image to Docker Hub
+      - name: Build and Push Docker image
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
+          cp target/vprofile-v2.war .
           echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-          docker push omaribrahim91/app01:latest
+          docker build -t $DOCKER_IMAGE:$GITHUB_SHA .
+          docker tag $DOCKER_IMAGE:$GITHUB_SHA $DOCKER_IMAGE:latest
+          docker push $DOCKER_IMAGE:$GITHUB_SHA
+          docker push $DOCKER_IMAGE:latest
+
+  deploy:
+    needs: build  # Wait for build job to complete
+    runs-on: self-hosted  # Your local runner
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Kubernetes
+        run: |
+          echo "Deploying $DOCKER_IMAGE:$GITHUB_SHA to cluster..."
+          kubectl set image -n $K8S_NAMESPACE deployment/app01 app01=$DOCKER_IMAGE:$GITHUB_SHA
+          kubectl rollout status -n $K8S_NAMESPACE deployment/app01
