@@ -19,8 +19,9 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: Build WAR file with Maven
-        run: mvn clean package
+      - name: Build WAR file with Maven (Dockerized)
+        run: |
+          docker run --rm -v "$PWD":/app -w /app maven:3.8.7-openjdk-11 mvn clean package
 
       - name: Build Docker image
         run: docker build -t omaribrahim91/app01:latest .
