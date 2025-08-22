@@ -58,3 +58,13 @@ k8s/                   # Kubernetes deployment manifests
 5- Registry: Docker Hub (configurable)
 
 6- Source Control: GitHub
+
+- Learning Outcomes
+
+1- How to design a Jenkins pipeline for Java applications.
+
+2- Building, containerizing, and deploying applications to Kubernetes.
+
+3- Automating deployments with rolling updates.
+
+4- Managing CI/CD workflows end-to-end.
